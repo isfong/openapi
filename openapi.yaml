@@ -1,0 +1,193 @@
+openapi: 3.0.0
+info:
+  title: 迪曼森网证服务开放API文档定义
+  version: 0.0.1
+  description: 迪曼森网证服务开放API文档定义
+  contact:
+    name: 迪曼森
+    url: 'https://github.com/ahdms'
+servers:
+  - url: 'http://localhost:3000'
+tags:
+  - name: credentials
+    description: CTID凭证
+paths:
+  /credentials:
+    post:
+      summary: 创建网证
+      operationId: post-credentials
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  credentials:
+                    type: string
+                    description: 网证值
+                  expiredAt:
+                    type: integer
+                    format: int64
+                    description: 过期时间点的毫秒值
+                required:
+                  - credentials
+                  - expiredAt
+      description: |-
+        * 进行身份核验并创建网证
+        * 本次签名信息: `signData = base64( sm3( "appId,timeStamp,name,idCard,facePic,timeStamp,appSecret" ) )`
+      tags:
+        - credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: 请求体JSON信息
+              type: object
+              properties:
+                appId:
+                  type: string
+                  description: 接入商应用ID
+                name:
+                  type: string
+                  description: 核验人姓名
+                idCard:
+                  type: string
+                  description: 核验人身份证编码
+                facePic:
+                  type: string
+                  description: 核验人面部照片
+                signData:
+                  type: string
+                  description: 请求参数签名信息
+                timeStamp:
+                  type: string
+                  description: '时间戳, 格式 `yyyyMMddHHmmss`'
+              required:
+                - appId
+                - name
+                - idCard
+                - signData
+                - timeStamp
+        description: '请求格式是 `Content-Type: application/json`'
+  '/credentials/{credentials}/identity':
+    parameters:
+      - $ref: '#/components/parameters/credentials'
+    get:
+      summary: 获取网证身份信息全部
+      tags:
+        - credentials
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          description: 网证未找到
+      operationId: get-credentials-credentials-identity
+      description: |-
+        * 获取网证身份信息：姓名、身份证号码、人脸照片(如果存在)
+        * 本次签名信息: `signData = base64( sm3( "credentials,appId,appSecret" ) )`
+      parameters:
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/signData'
+        - $ref: '#/components/parameters/timeStrap'
+  '/credentials/{credentials}/identity/face-picture':
+    parameters:
+      - $ref: '#/components/parameters/credentials'
+    get:
+      summary: 获取网证身份信息面部照片
+      tags:
+        - credentials
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          description: 网证未找到
+      operationId: get-credentials-credentials-identity-face-picture
+      description: |-
+        * 获取网证身份信息：人脸照片(如果存在)
+        * 本次签名信息: `base64( sm3( "credentials,appId,appSecret" ) )`
+      parameters:
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/signData'
+        - $ref: '#/components/parameters/timeStrap'
+  '/credentials/{credentials}/identity/name-id_number':
+    parameters:
+      - $ref: '#/components/parameters/credentials'
+    get:
+      summary: 获取网证身份信息姓名和身份证号码
+      tags:
+        - credentials
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          description: 网证未找到
+      operationId: get-credentials-credentials-identity-name-id_number
+      description: |-
+        * 获取网证身份信息：姓名、身份证号码
+        * 本次签名信息: `base64( sm3( "credentials,appId,appSecret" ) )`
+      parameters:
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/signData'
+        - $ref: '#/components/parameters/timeStrap'
+components:
+  schemas:
+    Identity:
+      title: Identity
+      type: object
+      description: 身份信息
+      properties:
+        name:
+          type: string
+          description: 姓名(SM4加密值)
+        idNumber:
+          type: string
+          description: 身份证号码(SM4加密值)
+        facePicture:
+          type: string
+          description: 面部照片(SM4加密值，如果存在)
+      required:
+        - name
+        - idNumber
+  parameters:
+    credentials:
+      name: credentials
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 网络身份凭证值
+    appId:
+      name: appId
+      in: query
+      required: true
+      schema:
+        type: string
+      description: 接入商应用ID
+    signData:
+      name: signData
+      in: query
+      required: true
+      schema:
+        type: string
+      description: 请求签名
+    timeStrap:
+      name: timeStrap
+      in: query
+      required: true
+      schema:
+        type: string
+      description: '时间戳, 格式 `yyyyMMddHHmmss`'
